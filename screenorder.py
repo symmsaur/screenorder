@@ -67,14 +67,20 @@ def get_x_resolution(resolution_string):
     parts = resolution_string.split("x")
     return int(parts[0])
 
+def get_y_resolution(resolution_string):
+    """Get the x resolution from a string like 1920x1200"""
+    parts = resolution_string.split("x")
+    return int(parts[1])
+
 
 def generate_command(monitors, disabled, order_info):
     """Generate command
 
     Example resulting command
-    xrandr --output DP-6 --mode 1920x1080 --pos 0x0 \
-        --output DP-0.2.1.8 --mode 1920x1200 --pos 1920x0 \
-        --output DP-0.2.1.1 --mode 1920x1200 --pos 3840x0
+    xrandr --fb 5760x1200 \
+        --output DP-6 --mode 1920x1080 --panning 1920x1080+0+0 --pos 0x0 \
+        --output DP-0.2.1.8 --mode 1920x1200 --panning 1920x1200+1920+0 --pos 1920x0 \
+        --output DP-0.2.1.1 --mode 1920x1200 --panning 1920x1200+3840+0 --pos 3840x0
     """
     selected_monitors = {}
     for identifier, monitor in monitors.items():
@@ -117,7 +123,9 @@ def generate_command(monitors, disabled, order_info):
         (identifier, monitor["resolution"], offset)
         for (identifier, monitor), offset in zip(ordered_monitors.items(), offsets)
     ]
-    res = ["xrandr"]
+    fb_width = sum(get_x_resolution(monitor["resolution"]) for monitor in ordered_monitors.values())
+    fb_height = max(get_y_resolution(monitor["resolution"]) for monitor in ordered_monitors.values())
+    res = ["xrandr", "--fb", f"{fb_width}x{fb_height}"]
     for identifier, resolution, monitor_x_pos in monitor_info:
         res.extend(
             [
@@ -125,6 +133,8 @@ def generate_command(monitors, disabled, order_info):
                 identifier,
                 "--mode",
                 resolution,
+                "--panning",
+                f"{resolution}+{monitor_x_pos}+0",
                 "--pos",
                 f"{monitor_x_pos}x0",
             ]
