@@ -18,8 +18,14 @@ def get_config_file_name():
 
 def read_order_info():
     """Read info about monitors from file"""
+    config_path = Path(get_config_file_name())
+    if not config_path.is_file():
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(config_path, "w") as f:
+            f.write("{}")
+
     with open(
-        get_config_file_name(),
+        config_path,
         "r",
         encoding="utf8",
     ) as screen_order_file:
