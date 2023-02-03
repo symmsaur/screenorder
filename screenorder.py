@@ -18,8 +18,14 @@ def get_config_file_name():
 
 def read_order_info():
     """Read info about monitors from file"""
+    config_path = Path(get_config_file_name())
+    if not config_path.is_file():
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(config_path, "w") as f:
+            f.write("{}")
+
     with open(
-        get_config_file_name(),
+        config_path,
         "r",
         encoding="utf8",
     ) as screen_order_file:
@@ -46,7 +52,7 @@ def get_monitors_info():
         if state == "scanning":
             if line.strip() == "EDID:":
                 state = "munching"
-            elif line.startswith("DP-"):
+            elif line.startswith("DP-") or line.startswith("HDMI-") or line.startswith("eDP-"):
                 if identifier is not None and identifier not in res:
                     disabled.add(identifier)
                 identifier = line.split()[0]
