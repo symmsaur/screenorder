@@ -46,7 +46,7 @@ def get_monitors_info():
         if state == "scanning":
             if line.strip() == "EDID:":
                 state = "munching"
-            elif line.startswith("DP-"):
+            elif line.startswith("DP-") or line.startswith("HDMI-") or line.startswith("eDP-"):
                 if identifier is not None and identifier not in res:
                     disabled.add(identifier)
                 identifier = line.split()[0]
