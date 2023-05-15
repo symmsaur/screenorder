@@ -169,6 +169,24 @@ def generate_xrandr_command(ordered_monitors, disabled):
     return res
 
 
+def is_i3_running():
+    """Check if i3 is running"""
+    return subprocess.run(["pgrep", "-x", "i3"], check=False, capture_output=True)
+
+
+def generate_i3_commands(ordered_monitors):
+    """Generate commands to order workspaces in i3"""
+    if not is_i3_running():
+        return []
+    return [
+        [
+            "i3-msg",
+            f"workspace number {monitor['order']}; move workspace to output {output}",
+        ]
+        for output, monitor in ordered_monitors.items()
+    ]
+
+
 def main():
     """Reorder monitors using xrandr"""
     monitors, disabled = get_monitors_info()
@@ -180,7 +198,11 @@ def main():
     if not cmd:
         sys.exit(1)
     print(f"Running \"{' '.join(cmd)}\"")
-    # subprocess.run(cmd, check=True)
+    subprocess.run(cmd, check=True)
+    cmds = generate_i3_commands(ordered_monitors)
+    for cmd in cmds:
+        print(f"Running \"{' '.join(cmd)}\"")
+        subprocess.run(cmd, check=True, capture_output=True)
     sys.exit(0)
 
 

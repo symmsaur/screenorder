@@ -2,6 +2,8 @@
 
 A tiny utility to order screens in X automatically. Uses the edid of each screen to identify it.
 
+If you're using `i3` it will reorder your workspaces automatically as well.
+
 ## Installation
 
 Put `screenorder.py` where you can find it or on your `PATH`.
