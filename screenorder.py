@@ -21,9 +21,8 @@ def read_order_info():
     config_path = Path(get_config_file_name())
     if not config_path.is_file():
         config_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(config_path, "w") as f:
-            f.write("{}")
-
+        with open(config_path, "w", encoding="utf8") as config_file:
+            config_file.write("{}")
     with open(
         config_path,
         "r",
@@ -52,7 +51,11 @@ def get_monitors_info():
         if state == "scanning":
             if line.strip() == "EDID:":
                 state = "munching"
-            elif line.startswith("DP-") or line.startswith("HDMI-") or line.startswith("eDP-"):
+            elif (
+                line.startswith("DP-")
+                or line.startswith("HDMI-")
+                or line.startswith("eDP-")
+            ):
                 if identifier is not None and identifier not in res:
                     disabled.add(identifier)
                 identifier = line.split()[0]
@@ -72,6 +75,7 @@ def get_x_resolution(resolution_string):
     """Get the x resolution from a string like 1920x1200"""
     parts = resolution_string.split("x")
     return int(parts[0])
+
 
 def get_y_resolution(resolution_string):
     """Get the x resolution from a string like 1920x1200"""
@@ -129,8 +133,12 @@ def generate_command(monitors, disabled, order_info):
         (identifier, monitor["resolution"], offset)
         for (identifier, monitor), offset in zip(ordered_monitors.items(), offsets)
     ]
-    fb_width = sum(get_x_resolution(monitor["resolution"]) for monitor in ordered_monitors.values())
-    fb_height = max(get_y_resolution(monitor["resolution"]) for monitor in ordered_monitors.values())
+    fb_width = sum(
+        get_x_resolution(monitor["resolution"]) for monitor in ordered_monitors.values()
+    )
+    fb_height = max(
+        get_y_resolution(monitor["resolution"]) for monitor in ordered_monitors.values()
+    )
     res = ["xrandr", "--fb", f"{fb_width}x{fb_height}"]
     for identifier, resolution, monitor_x_pos in monitor_info:
         res.extend(
