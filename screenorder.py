@@ -83,15 +83,8 @@ def get_y_resolution(resolution_string):
     return int(parts[1])
 
 
-def generate_command(monitors, disabled, order_info):
-    """Generate command
-
-    Example resulting command
-    xrandr --fb 5760x1200 \
-        --output DP-6 --mode 1920x1080 --panning 1920x1080+0+0 --pos 0x0 \
-        --output DP-0.2.1.8 --mode 1920x1200 --panning 1920x1200+1920+0 --pos 1920x0 \
-        --output DP-0.2.1.1 --mode 1920x1200 --panning 1920x1200+3840+0 --pos 3840x0
-    """
+def order_monitors(monitors, order_info):
+    """Return monitors ordered by order_info"""
     selected_monitors = {}
     for identifier, monitor in monitors.items():
         monitor_order_info = order_info.get(monitor["edid"], None)
@@ -122,6 +115,18 @@ def generate_command(monitors, disabled, order_info):
     ordered_monitors = dict(
         sorted(selected_monitors.items(), key=lambda item: item[1]["order"])
     )
+    return ordered_monitors
+
+
+def generate_xrandr_command(ordered_monitors, disabled):
+    """Generate command
+
+    Example resulting command
+    xrandr --fb 5760x1200 \
+        --output DP-6 --mode 1920x1080 --panning 1920x1080+0+0 --pos 0x0 \
+        --output DP-0.2.1.8 --mode 1920x1200 --panning 1920x1200+1920+0 --pos 1920x0 \
+        --output DP-0.2.1.1 --mode 1920x1200 --panning 1920x1200+3840+0 --pos 3840x0
+    """
     offsets = [0]
     offsets.extend(
         accumulate(
@@ -168,11 +173,14 @@ def main():
     """Reorder monitors using xrandr"""
     monitors, disabled = get_monitors_info()
     order_info = read_order_info()
-    cmd = generate_command(monitors, disabled, order_info)
+    ordered_monitors = order_monitors(monitors, order_info)
+    if not order_monitors:
+        sys.exit(1)
+    cmd = generate_xrandr_command(ordered_monitors, disabled)
     if not cmd:
         sys.exit(1)
     print(f"Running \"{' '.join(cmd)}\"")
-    subprocess.run(cmd, check=True)
+    # subprocess.run(cmd, check=True)
     sys.exit(0)
 
 
