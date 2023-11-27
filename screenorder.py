@@ -16,8 +16,8 @@ def get_config_file_name():
     return os.path.join(str(Path.home()), ".config/screenorder/screenorder_config.json")
 
 
-def read_order_info():
-    """Read info about monitors from file"""
+def read_monitor_config():
+    """Read configuration of monitors from file"""
     config_path = Path(get_config_file_name())
     if not config_path.is_file():
         config_path.parent.mkdir(parents=True, exist_ok=True)
@@ -83,12 +83,12 @@ def get_y_resolution(resolution_string):
     return int(parts[1])
 
 
-def order_monitors(monitors, order_info):
-    """Return monitors ordered by order_info"""
+def configure_monitors(monitors, config):
+    """Return monitors configured by config"""
     selected_monitors = {}
     for identifier, monitor in monitors.items():
-        monitor_order_info = order_info.get(monitor["edid"], None)
-        if monitor_order_info is None:
+        monitor_config = config.get(monitor["edid"], None)
+        if monitor_config is None:
             print(f"Did not find monitor {identifier} in {get_config_file_name()}")
             print("Insert:")
             print(
@@ -97,13 +97,16 @@ def order_monitors(monitors, order_info):
                         monitor["edid"]: {
                             "order": "<Order goes here. E. g. 1, 2, 3>",
                             "Description": "<Short description of monitor>",
+                            "resolution": "Optional: Override default resolution. Format WxH",
                         }
                     },
                     indent=4,
                 )
             )
         else:
-            monitor["order"] = monitor_order_info["order"]
+            monitor["order"] = monitor_config["order"]
+            if "resolution" in monitor_config:
+                monitor["resolution"] = monitor_config["resolution"]
             selected_monitors[identifier] = monitor
 
     if len(selected_monitors) != len(
@@ -190,9 +193,9 @@ def generate_i3_commands(ordered_monitors):
 def main():
     """Reorder monitors using xrandr"""
     monitors, disabled = get_monitors_info()
-    order_info = read_order_info()
-    ordered_monitors = order_monitors(monitors, order_info)
-    if not order_monitors:
+    config = read_monitor_config()
+    ordered_monitors = configure_monitors(monitors, config)
+    if not ordered_monitors:
         sys.exit(1)
     cmd = generate_xrandr_command(ordered_monitors, disabled)
     if not cmd:
