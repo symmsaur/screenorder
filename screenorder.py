@@ -55,6 +55,7 @@ def get_monitors_info():
                 line.startswith("DP-")
                 or line.startswith("HDMI-")
                 or line.startswith("eDP-")
+                or line.startswith("DVI-")
             ):
                 if identifier is not None and identifier not in res:
                     disabled.add(identifier)
