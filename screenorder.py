@@ -73,15 +73,21 @@ def get_monitors_info():
     return res, disabled
 
 
-def get_x_resolution(resolution_string):
+def get_x_resolution(monitor):
     """Get the x resolution from a string like 1920x1200"""
+    resolution_string = monitor["resolution"]
     parts = resolution_string.split("x")
+    if "rotate" in monitor and monitor["rotate"] in ["left", "right"]:
+        return int(parts[1])
     return int(parts[0])
 
 
-def get_y_resolution(resolution_string):
+def get_y_resolution(monitor):
     """Get the x resolution from a string like 1920x1200"""
+    resolution_string = monitor["resolution"]
     parts = resolution_string.split("x")
+    if "rotate" in monitor and monitor["rotate"] in ["left", "right"]:
+        return int(parts[0])
     return int(parts[1])
 
 
@@ -100,15 +106,14 @@ def configure_monitors(monitors, config):
                             "order": "<Order goes here. E. g. 1, 2, 3>",
                             "Description": "<Short description of monitor>",
                             "resolution": "Optional: Override default resolution. Format WxH",
+                            "rotate": "Optional, valid are 'left', 'right'",
                         }
                     },
                     indent=4,
                 )
             )
         else:
-            monitor["order"] = monitor_config["order"]
-            if "resolution" in monitor_config:
-                monitor["resolution"] = monitor_config["resolution"]
+            monitor.update(monitor_config)
             selected_monitors[identifier] = monitor
 
     if len(selected_monitors) != len(
@@ -123,7 +128,7 @@ def configure_monitors(monitors, config):
     return ordered_monitors
 
 
-def generate_xrandr_command(ordered_monitors, disabled):
+def generate_xrandr_command(ordered_monitors, disabled, force_panning):
     """Generate command
 
     Example resulting command
@@ -134,35 +139,40 @@ def generate_xrandr_command(ordered_monitors, disabled):
     """
     offsets = [0]
     offsets.extend(
-        accumulate(
-            get_x_resolution(monitor["resolution"])
-            for monitor in ordered_monitors.values()
-        )
+        accumulate(get_x_resolution(monitor) for monitor in ordered_monitors.values())
     )
     monitor_info = [
-        (identifier, monitor["resolution"], offset)
+        (identifier, monitor["resolution"], offset, monitor.get("rotate", None))
         for (identifier, monitor), offset in zip(ordered_monitors.items(), offsets)
     ]
-    fb_width = sum(
-        get_x_resolution(monitor["resolution"]) for monitor in ordered_monitors.values()
-    )
-    fb_height = max(
-        get_y_resolution(monitor["resolution"]) for monitor in ordered_monitors.values()
-    )
+    fb_width = sum(get_x_resolution(monitor) for monitor in ordered_monitors.values())
+    fb_height = max(get_y_resolution(monitor) for monitor in ordered_monitors.values())
     res = ["xrandr", "--fb", f"{fb_width}x{fb_height}"]
-    for identifier, resolution, monitor_x_pos in monitor_info:
+    for identifier, resolution, monitor_x_pos, rotate in monitor_info:
         res.extend(
             [
                 "--output",
                 identifier,
                 "--mode",
                 resolution,
-                "--panning",
-                f"{resolution}+{monitor_x_pos}+0",
                 "--pos",
                 f"{monitor_x_pos}x0",
             ]
         )
+        if force_panning:
+            res.extend(
+                [
+                    "--panning",
+                    f"{resolution}+{monitor_x_pos}+0",
+                ]
+            )
+        if rotate:
+            res.extend(
+                [
+                    "--rotate",
+                    rotate,
+                ]
+            )
     for identifier in disabled:
         res.extend(
             [
@@ -196,13 +206,14 @@ def main():
     """Reorder monitors using xrandr"""
     parser = argparse.ArgumentParser("Screenorder")
     parser.add_argument("--dry_run", action="store_true")
+    parser.add_argument("--force_panning", action="store_true")
     args = parser.parse_args()
     monitors, disabled = get_monitors_info()
     config = read_monitor_config()
     ordered_monitors = configure_monitors(monitors, config)
     if not ordered_monitors:
         sys.exit(1)
-    cmd = generate_xrandr_command(ordered_monitors, disabled)
+    cmd = generate_xrandr_command(ordered_monitors, disabled, args.force_panning)
     if not cmd:
         sys.exit(1)
     print(f"Running \"{' '.join(cmd)}\"")
