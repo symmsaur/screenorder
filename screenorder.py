@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Order screens using xrandr."""
+import argparse
 import json
 import os
 import re
@@ -193,6 +194,9 @@ def generate_i3_commands(ordered_monitors):
 
 def main():
     """Reorder monitors using xrandr"""
+    parser = argparse.ArgumentParser("Screenorder")
+    parser.add_argument("--dry_run", action="store_true")
+    args = parser.parse_args()
     monitors, disabled = get_monitors_info()
     config = read_monitor_config()
     ordered_monitors = configure_monitors(monitors, config)
@@ -202,11 +206,13 @@ def main():
     if not cmd:
         sys.exit(1)
     print(f"Running \"{' '.join(cmd)}\"")
-    subprocess.run(cmd, check=True)
+    if not args.dry_run:
+        subprocess.run(cmd, check=True)
     cmds = generate_i3_commands(ordered_monitors)
     for cmd in cmds:
         print(f"Running \"{' '.join(cmd)}\"")
-        subprocess.run(cmd, check=True, capture_output=True)
+        if not args.dry_run:
+            subprocess.run(cmd, check=True, capture_output=True)
     sys.exit(0)
 
 
