@@ -104,9 +104,10 @@ def configure_monitors(monitors, config):
                     {
                         monitor["edid"]: {
                             "order": "<Order goes here. E. g. 1, 2, 3>",
-                            "Description": "<Short description of monitor>",
+                            "description": "<Short description of monitor>",
                             "resolution": "Optional: Override default resolution. Format WxH",
                             "rotate": "Optional, valid are 'left', 'right'",
+                            "i3-workspaces": "List: optional, override which i3 workspaces end up on this monitor",
                         }
                     },
                     indent=4,
@@ -193,13 +194,24 @@ def generate_i3_commands(ordered_monitors):
     """Generate commands to order workspaces in i3"""
     if not is_i3_running():
         return []
-    return [
-        [
-            "i3-msg",
-            f"workspace number {monitor['order']}; move workspace to output {output}",
-        ]
-        for output, monitor in ordered_monitors.items()
-    ]
+    res = []
+    for output, monitor in ordered_monitors.items():
+        if "i3-workspaces" in monitor:
+            for workspace in monitor["i3-workspaces"]:
+                res.append(
+                    [
+                        "i3-msg",
+                        f"workspace number {workspace}; move workspace to output {output}",
+                    ]
+                )
+        else:
+            res.append(
+                [
+                    "i3-msg",
+                    f"workspace number {monitor['order']}; move workspace to output {output}",
+                ]
+            )
+    return res
 
 
 def main():
