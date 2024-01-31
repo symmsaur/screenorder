@@ -126,6 +126,12 @@ def configure_monitors(monitors, config):
     ordered_monitors = dict(
         sorted(selected_monitors.items(), key=lambda item: item[1]["order"])
     )
+
+    primary_monitor_index = (max(len(ordered_monitors) - 1, 0)) // 2
+    for i, key in enumerate(ordered_monitors.keys()):
+        if i == primary_monitor_index:
+            ordered_monitors[key]["primary"] = True
+
     return ordered_monitors
 
 
@@ -142,14 +148,21 @@ def generate_xrandr_command(ordered_monitors, disabled, force_panning):
     offsets.extend(
         accumulate(get_x_resolution(monitor) for monitor in ordered_monitors.values())
     )
+
     monitor_info = [
-        (identifier, monitor["resolution"], offset, monitor.get("rotate", None))
+        (
+            identifier,
+            monitor["resolution"],
+            offset,
+            monitor.get("rotate", None),
+            monitor.get("primary", None),
+        )
         for (identifier, monitor), offset in zip(ordered_monitors.items(), offsets)
     ]
     fb_width = sum(get_x_resolution(monitor) for monitor in ordered_monitors.values())
     fb_height = max(get_y_resolution(monitor) for monitor in ordered_monitors.values())
     res = ["xrandr", "--fb", f"{fb_width}x{fb_height}"]
-    for identifier, resolution, monitor_x_pos, rotate in monitor_info:
+    for identifier, resolution, monitor_x_pos, rotate, primary in monitor_info:
         res.extend(
             [
                 "--output",
@@ -172,6 +185,12 @@ def generate_xrandr_command(ordered_monitors, disabled, force_panning):
                 [
                     "--rotate",
                     rotate,
+                ]
+            )
+        if primary:
+            res.extend(
+                [
+                    "--primary",
                 ]
             )
     for identifier in disabled:
