@@ -43,6 +43,10 @@ def get_monitors_info():
         encoding="utf8",
         check=True,
     ).stdout
+    return parse_xrandr_output(xrandr_output)
+
+
+def parse_xrandr_output(xrandr_output):
     state = "scanning"
     identifier = None
     res = {}
@@ -61,8 +65,17 @@ def get_monitors_info():
                 if identifier is not None and identifier not in res:
                     disabled.add(identifier)
                 identifier = line.split()[0]
-            elif match := re.match(r"\s*(\d+x\d+).*\+preferred", line):
+            elif match := re.match(r"\s*(\d+x\d+) \(0x[0-9a-f]+\).*\+preferred", line):
+                # Try to find a preferred resolution
+                # match e. g:
+                # 3840x2160 (0x21e) 533.250MHz +HSync -VSync +preferred
                 res[identifier]["resolution"] = match.groups()[0]
+            elif match := re.match(r"\s*(\d+x\d+) \(0x[0-9a-f]+\)", line):
+                # Try to find any supported resolution (just pick the first one)
+                # match e. g:
+                # 5120x2160 (0x220) 730.730MHz +HSync +VSync
+                if "resolution" not in res[identifier]:
+                    res[identifier]["resolution"] = match.groups()[0]
         elif state == "munching":
             if ":" in line:
                 state = "scanning"
@@ -235,10 +248,18 @@ def generate_i3_commands(ordered_monitors):
 
 def main():
     """Reorder monitors using xrandr"""
-    parser = argparse.ArgumentParser("Screenorder")
+    parser = argparse.ArgumentParser("screenorder")
     parser.add_argument("--dry_run", action="store_true")
     parser.add_argument("--force_panning", action="store_true")
+    parser.add_argument("--debug_parse_xrandr_output_file")
     args = parser.parse_args()
+    if args.debug_parse_xrandr_output_file:
+        with open(
+            args.debug_parse_xrandr_output_file, "r", encoding="utf-8"
+        ) as xrandr_output_file:
+            contents = xrandr_output_file.read()
+        pprint(parse_xrandr_output(contents))
+        return 0
     monitors, disabled = get_monitors_info()
     config = read_monitor_config()
     ordered_monitors = configure_monitors(monitors, config)
