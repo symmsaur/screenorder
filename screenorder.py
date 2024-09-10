@@ -69,12 +69,13 @@ def parse_xrandr_output(xrandr_output):
                 # Try to find a preferred resolution
                 # match e. g:
                 # 3840x2160 (0x21e) 533.250MHz +HSync -VSync +preferred
-                res[identifier]["resolution"] = match.groups()[0]
+                if identifier in res:
+                    res[identifier]["resolution"] = match.groups()[0]
             elif match := re.match(r"\s*(\d+x\d+) \(0x[0-9a-f]+\)", line):
                 # Try to find any supported resolution (just pick the first one)
                 # match e. g:
                 # 5120x2160 (0x220) 730.730MHz +HSync +VSync
-                if "resolution" not in res[identifier]:
+                if identifier in res and "resolution" not in res[identifier]:
                     res[identifier]["resolution"] = match.groups()[0]
         elif state == "munching":
             if ":" in line:
